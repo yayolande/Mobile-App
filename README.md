@@ -13,8 +13,11 @@ Welcome to the class mobile app project repository! This repository is organized
 # 1
 ![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/1.PNG?raw=true)
 
-# 2
+# 2 / step 1
 ![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/2.PNG?raw=true)
+
+# 2 /step 2
+![Image](https://github.com/3dcodex-org/.github/blob/main/profile/private/2f.PNG?raw=true)
 
 # 3
 ![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/3.PNG?raw=true)
