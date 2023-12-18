@@ -13,7 +13,7 @@ Here are the talking points expected by the prof :
 
 ## Application Overview
 
-[Actions Overview](./assets/20.flowchart_user_use_case_3.png)
+![Actions Overview](./assets/20.flowchart_user_use_case_3.png)
 
 The project is using **React Native**. The MVP will implement the view above first
 
