@@ -1,11 +1,29 @@
 # Mobile-App
 
+## Intro
+
+This is the work of **Group 5 (Online Student)** for **Intro Mobile Application Development (SE 3140)** throughout *Fall 23*
+
+## Presentation
+
+Here are the talking points expected by the prof :
+
+- MVC model relationship with the project
+- Presentation of the Android app view
+
+## Application Overview
+
+[Actions Overview](./assets/20.flowchart_user_use_case_3.png)
+
+The project is using **React Native**. The MVP will implement the view above first
+
+
 ## Work Distribution
 
 So here is the role :
 
-1. Godwill ----> Tournament Standing View
-2. Lennon ----> Match Statistics View
-3. Steve    ----> Planned Matches View
-4. Nixon & Philomene ----> Tournament Creation
-5. Tiyo & Segolene      ----> Match scheduling Creation
+- [ ] Godwill ----> Tournament Standing View
+- [ ] Lennon ----> Match Statistics View
+- [ ] Steve    ----> Planned Matches View
+- [ ] Nixon & Philomene ----> Tournament Creation
+- [ ] Tiyo & Segolene      ----> Match scheduling Creation
