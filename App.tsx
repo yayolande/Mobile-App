@@ -1,10 +1,10 @@
 // Mobile Tournament App
 //
 import React, { useState, useContext, createContext, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationProp, useIsFocused } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OPSQLiteConnection, open } from '@op-engineering/op-sqlite';
-import { StyleSheet, Text, View, Button, TextInput } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput, TouchableOpacity } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 const GlobalStateManagement = createContext({} as GlobalStore);
@@ -22,7 +22,7 @@ function AppNavigator(): React.JSX.Element {
   // let store = { name: 'steveen', age: 30 };
   let store: GlobalStore = {
     user: { name: 'steveen', age: 34 },
-    currentTournament: null,
+    currentTournament: {},
   };
 
   databaseMigration(db);
@@ -46,6 +46,9 @@ function AppNavigator(): React.JSX.Element {
     <GlobalStateManagement.Provider value={store}>
       <NavigationContainer>
         <Stack.Navigator>
+          {
+            //FIXME: REAL NAME IS 'TournamentManagement' not 'Home'
+          }
           <Stack.Screen name="Test HomeScreen" component={HomeScreen} />
           <Stack.Screen
             name="up-coming-matches"
@@ -55,7 +58,23 @@ function AppNavigator(): React.JSX.Element {
           <Stack.Screen
             name="create-tournament"
             component={CreateTournamentScreen}
+            // eslint-disable-next-line prettier/prettier
             options={{ title: 'Create Tournament' }}
+          />
+          <Stack.Screen
+            name="team-management"
+            component={TeamManagementScreen}
+            options={{ title: 'Team Management' }}
+          />
+          <Stack.Screen
+            name="create-team"
+            component={CreateTeamScreen}
+            options={{ title: 'Team Creation' }}
+          />
+          <Stack.Screen
+            name="schedule-match"
+            component={ScheduleMatchScreen}
+            options={{ title: 'Schedule a Match' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
@@ -63,16 +82,55 @@ function AppNavigator(): React.JSX.Element {
   );
 }
 
-function HomeScreen({ navigation }): React.JSX.Element {
+// eslint-disable-next-line prettier/prettier
+function HomeScreen({ navigation }: any): React.JSX.Element {
   let store: GlobalStore = useContext(GlobalStateManagement);
+  let screenFocus = useIsFocused();
+  let [tournamentState, setTournamentState] = useState([] as any[]);
 
   useEffect(() => {
     console.log('Homescreen store.user = ');
     console.log(store.user);
   }, [store.user]);
 
+  useEffect(() => {
+    console.log('Gain focus of Homescreen');
+    let { rows } = DB.execute('SELECT * FROM tournaments WHERE organizer_id = ? ', [
+      store.user.id,
+    ]);
+
+    let userTournament: any[] = [];
+    userTournament = rows?._array || [];
+    setTournamentState(userTournament);
+  }, [screenFocus, store.user.id]);
+
   return (
     <View>
+      {tournamentState.map(item => {
+        return (
+          // TODO: Wrap this list with <ScrollView>
+          <View key={item.id}>
+            <TouchableOpacity
+              onPress={_ => {
+                console.log(`Chose tournament: ${item.name}`);
+                store.currentTournament.id = item.id;
+                store.currentTournament.name = item.name;
+                navigation.navigate('team-management');
+              }}>
+              <Text>
+                {item.id} ::: {item.name}
+              </Text>
+              <TouchableOpacity
+                onPress={_ => {
+                  console.log('Delete actoin');
+                }}
+              >
+                <Text>=Delete=</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        );
+      })}
       <Text>HomeScreen</Text>
       <Button
         title="Create Tourney"
@@ -80,6 +138,7 @@ function HomeScreen({ navigation }): React.JSX.Element {
           console.log('Pressed __Create Tourney__ button');
           console.log('Hi');
           navigation.navigate('create-tournament');
+          console.log(navigation);
         }}
       />
       <Button title='test' onPress={_ => console.log(`store.name = ${store.name}`)} />
@@ -87,7 +146,7 @@ function HomeScreen({ navigation }): React.JSX.Element {
   );
 }
 
-function CreateTournamentScreen(): React.JSX.Element {
+function CreateTournamentScreen({ navigation }): React.JSX.Element {
   const [tournamentName, setTournamentName] = useState('');
   let store: any = useContext(GlobalStateManagement);
 
@@ -106,15 +165,30 @@ function CreateTournamentScreen(): React.JSX.Element {
             '... creating tournament (inserting to DB). Name = ',
             tournamentName,
           );
-          // DB.execute('INSERT INTO tournaments (name) values (?)', [
-          // tournamentName,
-          // ]);
+          let result_insertion = DB.execute(
+            'INSERT INTO tournaments (name, organizer_id) values (?, ?)',
+            [tournamentName, store.user.id],
+          );
+          console.log('Insertion Result :');
+          console.log(result_insertion);
 
           let { rows } = DB.execute('SELECT * FROM tournaments');
           rows?._array.forEach(row => console.log(row));
           console.log(`store previous value = ${store.name}`);
-          store.name = tournamentName;
           console.log(`store current value = ${store.name}`);
+
+          store.currentTournament = { id: result_insertion.insertId, name: tournamentName };
+
+          let results = DB.execute('select rowid from tournaments');
+          results.rows?._array.forEach(element => {
+            console.log('rowid ??');
+            console.log(element);
+          });
+          console.log('current active tournament');
+          console.log(store);
+          console.log(typeof navigation);
+
+          navigation.goBack();
         }}
       />
     </View>
@@ -165,6 +239,85 @@ function UpcomingMatches(): React.JSX.Element {
           </View>
         </View>
       ))}
+    </View>
+  );
+}
+
+function TeamManagementScreen({ navigation }): React.JSX.Element {
+  let [teams, setTeams] = useState([] as any[])
+  let store = useContext(GlobalStateManagement);
+  let screenFocus = useIsFocused();
+
+  useEffect(() => {
+    console.log('Team management focus gamed');
+    let { rows } = DB.execute('SELECT * FROM teams WHERE tournament_id = ?', [
+      store.currentTournament.id,
+    ]);
+
+    setTeams(rows?._array || []);
+  }, [screenFocus, store.currentTournament.id]);
+
+  return (
+    <View>
+      <Text>Tournamement: {store.currentTournament.name} --- (id: {store.currentTournament.id})</Text>
+      <Button
+        title="Create Team"
+        onPress={_ => {
+          navigation.navigate('create-team');
+        }}
+      />
+      <Button
+        title="Create match schedule"
+        onPress={_ => {
+          navigation.navigate('schedule-match');
+        }}
+      />
+      <View>
+        {teams.map(team => {
+          return (
+            <View key={team.id}>
+              <Text>{team.id} ::: {team.code}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function CreateTeamScreen({ navigation }): React.JSX.Element {
+  let store = useContext(GlobalStateManagement);
+  let team = {} as any;
+
+  return (
+    <View>
+      <TextInput
+        placeholder="Enter the Team code"
+        onChangeText={text => (team.code = text)}
+      />
+      <TextInput
+        placeholder="Enter team fullname"
+        onChangeText={text => (team.fullName = text)}
+      />
+      <Button
+        title="Create Team"
+        onPress={_ => {
+          console.log('Creating Team ... not implemented !');
+          DB.execute(
+            'INSERT INTO teams (code, full_name, tournament_id) values (?, ?, ?)',
+            [team.code, team.fullName, store.currentTournament.id],
+          );
+          navigation.goBack();
+        }}
+      />
+    </View>
+  );
+}
+
+function ScheduleMatchScreen({ navigation }): React.JSX.Element {
+  return (
+    <View>
+      <Text>Select team 1 & 2; chose the date & time</Text>
     </View>
   );
 }
