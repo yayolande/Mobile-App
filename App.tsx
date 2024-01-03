@@ -99,6 +99,8 @@ function HomeScreen({ navigation }: any): React.JSX.Element {
       store.user.id,
     ]);
 
+    console.log(rows?._array);
+
     let userTournament: any[] = [];
     userTournament = rows?._array || [];
     setTournamentState(userTournament);
@@ -120,6 +122,7 @@ function HomeScreen({ navigation }: any): React.JSX.Element {
               <Text>
                 {item.id} ::: {item.name}
               </Text>
+              <Text>startdate: {item.start_date}</Text>
               <TouchableOpacity
                 onPress={_ => {
                   console.log('Delete actoin');
@@ -147,7 +150,7 @@ function HomeScreen({ navigation }: any): React.JSX.Element {
 }
 
 function CreateTournamentScreen({ navigation }): React.JSX.Element {
-  const [tournamentName, setTournamentName] = useState('');
+  const [tournament, setTournament] = useState({} as any);
   let store: any = useContext(GlobalStateManagement);
 
   return (
@@ -156,37 +159,77 @@ function CreateTournamentScreen({ navigation }): React.JSX.Element {
       <TextInput
         style={styles.inputCreateTournament}
         placeholder="Tournament Name"
-        onChangeText={text => setTournamentName(text)}
+        onChangeText={text => setTournament({ ...tournament, name: text })}
+      />
+      <TextInput
+        style={styles.inputCreateTournament}
+        placeholder="Matches Frequency (Default: 7)"
+        onChangeText={text =>
+          setTournament({ ...tournament, matchFrequency: text })
+        }
+      />
+      <TextInput
+        style={styles.inputCreateTournament}
+        placeholder="Start Date (Default: Today)"
+        onChangeText={text => setTournament({ ...tournament, startDate: text })}
       />
       <Button
         title="Create Tournament"
         onPress={_ => {
           console.log(
             '... creating tournament (inserting to DB). Name = ',
-            tournamentName,
+            tournament.name,
           );
+
+          console.log(`Tourney startDate: ${tournament.startDate}`);
+          console.log(tournament);
+          // Checking if all input are OK
+          // let matchFrequency: int = parseInt(tournament.matchFrequency, 10);
+          // let startDate: Date = new Date(tournament.startDate);
+
+          // Insert default value if field empty
+          if (
+            tournament.matchFrequency === '' ||
+            tournament.matchFrequency === undefined ||
+            isNaN(parseInt(tournament.matchFrequency, 10))
+          ) {
+            // setTournament(item => (item.matchFrequency = '7'));
+            tournament.matchFrequency = '7';
+          }
+          // TODO: if start
+          if (
+            tournament.startDate === '' ||
+            tournament.startDate === undefined ||
+            new Date(tournament.startDate).toString() === 'Invalid Date'
+          ) {
+            // tournament.startDate = new Date().toDateString();
+            let date = new Date().toISOString();
+            tournament.startDate = date.split('T')[0];
+            // setTournament(item => (item.startDate = date));
+          }
+
+          console.log('===============');
+          // console.log(`frequency: ${matchFrequency} :::::: startDate: ${startDate}`);
+          console.log('===============');
+          console.log(tournament);
+
+          // Saving the data to database
           let result_insertion = DB.execute(
-            'INSERT INTO tournaments (name, organizer_id) values (?, ?)',
-            [tournamentName, store.user.id],
+            'INSERT INTO tournaments (name, match_frequency, start_date, organizer_id) values (?, ?, ?, ?);',
+            [
+              tournament.name,
+              tournament.matchFrequency,
+              tournament.startDate,
+              store.user.id,
+            ],
           );
           console.log('Insertion Result :');
           console.log(result_insertion);
 
-          let { rows } = DB.execute('SELECT * FROM tournaments');
-          rows?._array.forEach(row => console.log(row));
-          console.log(`store previous value = ${store.name}`);
-          console.log(`store current value = ${store.name}`);
-
-          store.currentTournament = { id: result_insertion.insertId, name: tournamentName };
-
-          let results = DB.execute('select rowid from tournaments');
-          results.rows?._array.forEach(element => {
-            console.log('rowid ??');
-            console.log(element);
-          });
-          console.log('current active tournament');
-          console.log(store);
-          console.log(typeof navigation);
+          store.currentTournament = {
+            id: result_insertion.insertId,
+            name: tournament.name,
+          };
 
           navigation.goBack();
         }}
@@ -336,6 +379,8 @@ function databaseMigration(db: OPSQLiteConnection): void {
     CREATE TABLE IF NOT EXISTS tournaments (
       id integer primary key autoincrement,
       name text,
+      match_frequency int,
+      start_date date,
       organizer_id int,
       FOREIGN KEY (organizer_id) REFERENCES users (id)
     );

@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS users (
   id integer primary key autoincrement,
   name text,
@@ -9,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS tournaments (
   id integer primary key autoincrement,
   name text,
+  match_frequency int,
+  start_date date,
   organizer_id int,
   FOREIGN KEY (organizer_id) REFERENCES users (id)
 );
@@ -32,4 +33,3 @@ CREATE TABLE IF NOT EXISTS matches (
   FOREIGN KEY (team_home_id) REFERENCES teams (id),
   FOREIGN KEY (team_away_id) REFERENCES teams (id)
 );
-
