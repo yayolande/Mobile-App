@@ -1,7 +1,7 @@
 // Mobile Tournament App
 //
 import React, { useState, useContext, createContext, useEffect } from 'react';
-import { NavigationContainer, NavigationProp, useIsFocused } from '@react-navigation/native';
+import { NavigationContainer, useIsFocused } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OPSQLiteConnection, open } from '@op-engineering/op-sqlite';
 import { StyleSheet, Text, View, Button, TextInput, TouchableOpacity } from 'react-native';
@@ -45,7 +45,7 @@ function AppNavigator(): React.JSX.Element {
   return (
     <GlobalStateManagement.Provider value={store}>
       <NavigationContainer>
-        <Stack.Navigator>
+        <Stack.Navigator initialRouteName="team-management">
           {
             //FIXME: REAL NAME IS 'TournamentManagement' not 'Home'
           }
@@ -144,7 +144,10 @@ function HomeScreen({ navigation }: any): React.JSX.Element {
           console.log(navigation);
         }}
       />
-      <Button title='test' onPress={_ => console.log(`store.name = ${store.name}`)} />
+      <Button
+        title="test"
+        onPress={_ => console.log(`store.name = ${store.name}`)}
+      />
     </View>
   );
 }
@@ -190,8 +193,8 @@ function CreateTournamentScreen({ navigation }): React.JSX.Element {
           // Insert default value if field empty
           if (
             tournament.matchFrequency === '' ||
-            tournament.matchFrequency === undefined ||
-            isNaN(parseInt(tournament.matchFrequency, 10))
+            urnament.matchFrequency === undefined ||
+            NaN(parseInt(tournament.matchFrequency, 10))
           ) {
             // setTournament(item => (item.matchFrequency = '7'));
             tournament.matchFrequency = '7';
@@ -287,9 +290,14 @@ function UpcomingMatches(): React.JSX.Element {
 }
 
 function TeamManagementScreen({ navigation }): React.JSX.Element {
-  let [teams, setTeams] = useState([] as any[])
+  let [teams, setTeams] = useState([] as any[]);
   let store = useContext(GlobalStateManagement);
   let screenFocus = useIsFocused();
+
+  // ================ Only for testing to remove
+  store.currentTournament.id = 1;
+  store.currentTournament.name = 'Test Momo Tourney';
+  // ================ Only for testing to remove END @@@@@@
 
   useEffect(() => {
     console.log('Team management focus gamed');
@@ -313,6 +321,17 @@ function TeamManagementScreen({ navigation }): React.JSX.Element {
         title="Create match schedule"
         onPress={_ => {
           navigation.navigate('schedule-match');
+        }}
+      />
+      <Button
+        title="Team pairing"
+        onPress={_ => {
+          console.log(teams);
+
+          let teamsId = teams.map(el => el.id);
+          let teamsPairing = MakeTeamsPairing(teamsId);
+          console.log('final team pairing');
+          console.log(teamsPairing);
         }}
       />
       <View>
@@ -363,6 +382,169 @@ function ScheduleMatchScreen({ navigation }): React.JSX.Element {
       <Text>Select team 1 & 2; chose the date & time</Text>
     </View>
   );
+}
+
+function MakeTeamsPairing(teamsId: any[]) {
+  let maxTeams = teamsId.length;
+  let maxRetry = 3;
+  let teams = [];
+  let isScheduleFilled = false;
+
+  console.log('================== MakeTeamsPairing ==================');
+  console.log(teamsId);
+
+  for (let i = 0; i < maxRetry; i++) {
+    [teams, isScheduleFilled] = buildSimpleTeamsPairing(maxTeams);
+
+    if (isScheduleFilled) {
+      break;
+    }
+  }
+
+  console.log('------->>>> ', teams);
+
+  if (!isScheduleFilled) {
+    console.log('matches scheduler function failed !');
+
+    return [null, isScheduleFilled];
+  }
+
+  // Convert from 0-based index to application based index for all teams
+  let pairing = {};
+  let teamId: number;
+
+  for (let i = 0; i < teams.length; i++) {
+    teamId = teamsId[i];
+    pairing[teamId] = [];
+
+    for (let j = 0; j < teams[i].length; j++) {
+      pairing[teamId].push(teamsId[teams[i][j]]);
+    }
+  }
+
+  console.log('pairing completed: ', pairing);
+  return [pairing, isScheduleFilled];
+}
+
+function buildSimpleTeamsPairing(maxTeams: number) {
+  if (maxTeams % 2 !== 0) {
+    console.log(
+      '[Warning]: For the pairing to work, you need an even number of teams. Instead you have :',
+      maxTeams,
+    );
+
+    return [null, false];
+  }
+  // teams[i] = matches for team 'i'
+  // matches[j] = match for round 'j + 1'
+  // teams.length = teamCount
+
+  const NOT_SCHEDULED = -1;
+  let teamsCount = maxTeams;
+  let maxRounds = teamsCount - 1;
+  let teams = Array(teamsCount).fill([]);
+  teams = teams.map(_ => Array(maxRounds).fill(NOT_SCHEDULED));
+
+  let teamsId = Array(teamsCount)
+    .fill(0)
+    .map((_, index) => index);
+
+  console.log('==========================================');
+  console.log(teams);
+
+  let currentTeamId = 0;
+  let indexCurrentTeamId = 0;
+  let opponentTeams = [];
+
+  let shuffledOpponentTeams = [];
+  let isScheduleProperlyFill = true;
+
+  for (let i = 0; i < teams.length; i++) {
+    console.log('--------||-------');
+    currentTeamId = i;
+    indexCurrentTeamId = teamsId.indexOf(currentTeamId);
+
+    opponentTeams = teamsId.slice();
+    opponentTeams.splice(indexCurrentTeamId, 1);
+    shuffledOpponentTeams = randomizeArrayposition(opponentTeams);
+    console.log(`availableOpponent for id = ${i}: `, shuffledOpponentTeams);
+
+    // First loop on the row to identify the matches already scheduled and remove them from shuffledOpponentTeams
+    for (let j = 0; j < teams[i].length; j++) {
+      if (teams[i][j] === NOT_SCHEDULED) {
+        continue;
+      }
+
+      let idOpponentToRemove = teams[i][j];
+      let indexOpponentIdToRemove =
+        shuffledOpponentTeams.indexOf(idOpponentToRemove);
+      shuffledOpponentTeams.splice(indexOpponentIdToRemove, 1);
+    }
+    console.log(
+      'What left after row removal of existing oppoenet: ',
+      shuffledOpponentTeams,
+    );
+    //
+    // Second loop on the columns, of 'teams', to make sure a same team dont appear twice, columns wise
+    for (let j = 0; j < teams[i].length; j++) {
+      if (teams[i][j] !== NOT_SCHEDULED) {
+        continue;
+      }
+
+      for (let k = 0; k < shuffledOpponentTeams.length; k++) {
+        console.log('shuffleOp loop, id: ', k);
+        let opponentId = shuffledOpponentTeams[k];
+        let isOpponentFound = false;
+
+        for (let h = 0; h < teams.length; h++) {
+          if (teams[h][j] === opponentId) {
+            isOpponentFound = true;
+            break;
+          }
+        }
+
+        if (isOpponentFound) {
+          continue;
+        }
+
+        teams[i][j] = opponentId;
+        teams[opponentId][j] = i;
+
+        shuffledOpponentTeams.splice(k, 1);
+        break;
+      }
+    }
+    console.log(`end-availableOpponent for id = ${i}: `, shuffledOpponentTeams);
+    if (isScheduleProperlyFill && shuffledOpponentTeams.length > 0) {
+      isScheduleProperlyFill = false;
+    }
+  }
+
+  console.log('Final teams matches schedule: ', teams);
+  let str = '';
+  for (let i = 0; i < teams.length; i++) {
+    str = '';
+    for (let j = 0; j < teams[i].length; j++) {
+      str += ' ' + teams[i][j];
+    }
+    console.log(str);
+  }
+
+  return [teams, isScheduleProperlyFill];
+}
+
+function randomizeArrayposition(src: any[]) {
+  let arr: any[] = src.slice(); // Create a clone from source array
+  let randomizedArray = [];
+  let random = 0;
+
+  for (let i = arr.length; i > 0; i--) {
+    random = Math.floor(Math.random() * arr.length);
+    randomizedArray.push(arr[random]);
+    arr.splice(random, 1);
+  }
+
+  return randomizedArray;
 }
 
 function databaseMigration(db: OPSQLiteConnection): void {
@@ -424,8 +606,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'red',
     backgroundColor: '#ccc',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginVertical: 10,
     marginTop: 15,
   },
   teamContainer: {
