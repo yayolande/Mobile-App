@@ -193,7 +193,7 @@ function CreateTournamentScreen({ navigation }): React.JSX.Element {
           // Insert default value if field empty
           if (
             tournament.matchFrequency === '' ||
-            urnament.matchFrequency === undefined ||
+            tournament.matchFrequency === undefined ||
             NaN(parseInt(tournament.matchFrequency, 10))
           ) {
             // setTournament(item => (item.matchFrequency = '7'));
@@ -386,6 +386,7 @@ function ScheduleMatchScreen({ navigation }): React.JSX.Element {
 
 function MakeTeamsPairing(teamsId: any[]) {
   let maxTeams = teamsId.length;
+  let maxRounds = maxTeams - 1;
   let maxRetry = 3;
   let teams = [];
   let isScheduleFilled = false;
@@ -409,6 +410,74 @@ function MakeTeamsPairing(teamsId: any[]) {
     return [null, isScheduleFilled];
   }
 
+  // Work in Progress
+  // TODO: Work in progress here ...
+  //
+  console.log('====== teamSchedules ======');
+  let roundLengthInDays = 7.0;
+  let maxMatchesPerRound = teams.length / 2;
+  let averageDailyMatches = maxMatchesPerRound / roundLengthInDays;
+  // Eliminate error due to low precision rounding
+  // (eg. avg = 1/3 = 0.3. However 0.3 = .9, so one match won't be counted because of this)
+  averageDailyMatches += .1;
+
+  let matchesByRounds: any[] = Array(maxRounds)
+    .fill(null)
+    .map(_ => []);
+  console.log('matchesByRounds: ', matchesByRounds);
+  let teamsCopy = teams.slice();
+  let teamHomeId: number;
+  let teamAwayId: number;
+  let matchesRemainingForTheDay: number;
+  let matchDay: number;
+
+  for (let _round = 0; _round < maxRounds; _round++) {
+    matchesRemainingForTheDay = averageDailyMatches;
+    matchDay = 1;
+
+    for (let _teamId = 0; _teamId < maxTeams; _teamId++) {
+      teamHomeId = _teamId;
+      teamAwayId = teamsCopy[_teamId][_round];
+
+      if (teamAwayId === -1) {
+        console.log(`round = ${_round} :: teamId = ${_teamId} ||| Hitted continue instruction (for loop)`);
+        continue;
+      }
+
+      teamsCopy[teamHomeId][_round] = -1;
+      teamsCopy[teamAwayId][_round] = -1;
+
+      matchesRemainingForTheDay -= 1;
+      if (matchesRemainingForTheDay < 0) {
+        matchesRemainingForTheDay += averageDailyMatches;
+        matchDay++;
+      }
+
+      console.log('Pre assignment, matchesbyRound: ', matchesByRounds);
+
+      matchesByRounds[_round].push({
+        teamHomeId: teamHomeId,
+        teamAwayId: teamAwayId,
+        day: matchDay,
+      });
+
+      console.log(`[end for loop] round = ${_round} :: teamId = ${_teamId} :: matchesByRounds = `, matchesByRounds);
+    }
+  }
+  console.log(
+    'final matchesbyRound (teamsId not converted) ---> ',
+    matchesByRounds,
+  );
+  console.log('averageDailyMatches: ', averageDailyMatches);
+  console.log('teams size: ', maxTeams);
+  console.log('teamsCopy: ', teamsCopy);
+  console.log('====== ======');
+  return;
+  //
+  //
+  //
+  // End Work
+
   // Convert from 0-based index to application based index for all teams
   let pairing = {};
   let teamId: number;
@@ -426,11 +495,11 @@ function MakeTeamsPairing(teamsId: any[]) {
   return [pairing, isScheduleFilled];
 }
 
-function buildSimpleTeamsPairing(maxTeams: number) {
-  if (maxTeams % 2 !== 0) {
+function buildSimpleTeamsPairing(teamsCount: number) {
+  if (teamsCount % 2 !== 0) {
     console.log(
       '[Warning]: For the pairing to work, you need an even number of teams. Instead you have :',
-      maxTeams,
+      teamsCount,
     );
 
     return [null, false];
@@ -440,12 +509,12 @@ function buildSimpleTeamsPairing(maxTeams: number) {
   // teams.length = teamCount
 
   const NOT_SCHEDULED = -1;
-  let teamsCount = maxTeams;
-  let maxRounds = teamsCount - 1;
-  let teams = Array(teamsCount).fill([]);
+  let maxTeams = teamsCount;
+  let maxRounds = maxTeams - 1;
+  let teams = Array(maxTeams).fill([]);
   teams = teams.map(_ => Array(maxRounds).fill(NOT_SCHEDULED));
 
-  let teamsId = Array(teamsCount)
+  let teamsId = Array(maxTeams)
     .fill(0)
     .map((_, index) => index);
 
