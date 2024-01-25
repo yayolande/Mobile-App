@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS teams (
 
 CREATE TABLE IF NOT EXISTS matches (
   id integer primary key autoincrement,
+  tournament_id int,
   team_home_id int,
   team_away_id int,
   score_team_home int check (score_team_home >= 0),
