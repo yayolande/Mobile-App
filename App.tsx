@@ -5,6 +5,7 @@ import { NavigationContainer, useIsFocused } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OPSQLiteConnection, open } from '@op-engineering/op-sqlite';
 import { StyleSheet, Text, View, Button, TextInput, TouchableOpacity } from 'react-native';
+import TournamentStandingView from './StandingView';
 
 const Stack = createNativeStackNavigator();
 const GlobalStateManagement = createContext({} as GlobalStore);
@@ -54,6 +55,11 @@ function AppNavigator(): React.JSX.Element {
             name="up-coming-matches"
             component={UpcomingMatches}
             options={{ title: 'Up Coming Mathces' }}
+          />
+          <Stack.Screen
+            name="standing-view"
+            component={TournamentStandingView}
+            options={{ title: "Tournament Standing" }}
           />
           <Stack.Screen
             name="create-tournament"
@@ -242,48 +248,74 @@ function CreateTournamentScreen({ navigation }): React.JSX.Element {
 }
 
 function UpcomingMatches(): React.JSX.Element {
-  let matches = [
-    {
-      teamAwayCode: 'MCI',
-      teamHomeCode: 'CHE',
-      teamAwayLogo: 'H',
-      teamHomeLogo: 'C',
-      matchDate: 'Jan 2, 2023',
-      matchTime: '17:00',
-    },
-    {
-      teamAwayCode: 'ARS',
-      teamHomeCode: 'FUL',
-      teamAwayLogo: 'A',
-      teamHomeLogo: 'F',
-      matchDate: 'Jan 2, 2023',
-      matchTime: '15:00',
-    },
-    {
-      teamAwayCode: 'LIV',
-      teamHomeCode: 'SPU',
-      teamAwayLogo: 'L',
-      teamHomeLogo: 'S',
-      matchDate: 'Jan 2, 2023',
-      matchTime: '20:00',
-    },
-  ];
+  let store = useContext(GlobalStateManagement);
+  // let matches = [
+  //   {
+  //     teamAwayCode: 'MCI',
+  //     teamHomeCode: 'CHE',
+  //     teamAwayLogo: 'H',
+  //     teamHomeLogo: 'C',
+  //     matchDate: 'Jan 2, 2023',
+  //     matchTime: '17:00',
+  //   },
+  //   {
+  //     teamAwayCode: 'ARS',
+  //     teamHomeCode: 'FUL',
+  //     teamAwayLogo: 'A',
+  //     teamHomeLogo: 'F',
+  //     matchDate: 'Jan 2, 2023',
+  //     matchTime: '15:00',
+  //   },
+  //   {
+  //     teamAwayCode: 'LIV',
+  //     teamHomeCode: 'SPU',
+  //     teamAwayLogo: 'L',
+  //     teamHomeLogo: 'S',
+  //     matchDate: 'Jan 2, 2023',
+  //     matchTime: '20:00',
+  //   },
+  // ];
+  let matches: any[] = [];
+
+  let sql = `
+    SELECT m.*, t1.code as team_home_code, t2.code as team_away_code
+    FROM matches m
+    INNER JOIN teams t1 ON m.team_home_id = t1.id
+    INNER JOIN teams t2 ON m.team_away_id = t2.id
+  `;
+
+  let results = DB.execute(sql, [store.currentTournament.id]);
+  results.rows?._array.forEach(row => {
+    matches.push({
+      teamHomeCode: row.team_home_code,
+      teamAwayCode: row.team_away_code,
+      matchId: row.id,
+      matchDate: new Date(row.scheduled_datetime).toDateString(),
+      matchTime: new Date(row.scheduled_datetime).toTimeString().split(' ')[0],
+      teamHomeScore: parseInt(row.score_team_home, 10) || 0,
+      teamAwayScore: parseInt(row.score_team_away, 10) || 0,
+    });
+  });
+  console.log('Mathces available (upcoming) :', matches);
 
   // TODO: Add 'date' to the Card UI (singular match)
   return (
     <View style={styles.screenContainer}>
       {matches.map(item => (
-        <View style={styles.upcommingMatchesContainer}>
-          <View style={styles.teamContainer}>
-            <Text style={styles.teamCode}>{item.teamHomeCode}</Text>
-            <View style={styles.teamLogo} />
+        <>
+          <Text>{item.matchDate}</Text>
+          <View style={styles.upcommingMatchesContainer}>
+            <View style={styles.teamContainer}>
+              <Text style={styles.teamCode}>{item.teamHomeCode}</Text>
+              <View style={styles.teamLogo} />
+            </View>
+            <Text style={styles.teamContainer}>{item.matchTime}</Text>
+            <View style={styles.teamContainer}>
+              <View style={[styles.teamLogo, { backgroundColor: 'blue' }]} />
+              <Text style={styles.teamCode}>{item.teamAwayCode}</Text>
+            </View>
           </View>
-          <Text style={styles.teamContainer}>{item.matchTime}</Text>
-          <View style={styles.teamContainer}>
-            <View style={[styles.teamLogo, { backgroundColor: 'blue' }]} />
-            <Text style={styles.teamCode}>{item.teamAwayCode}</Text>
-          </View>
-        </View>
+        </>
       ))}
     </View>
   );
@@ -329,9 +361,56 @@ function TeamManagementScreen({ navigation }): React.JSX.Element {
           console.log(teams);
 
           let teamsId = teams.map(el => el.id);
-          let teamsPairing = MakeTeamsPairing(teamsId);
+          let [matchesByRounds, isOkay] = MakeTeamsPairing(teamsId);
+          if (!isOkay) {
+            console.log('[Error] The pairing system did not complete properly');
+            return;
+          }
           console.log('final team pairing');
-          console.log(teamsPairing);
+          console.log(matchesByRounds);
+          // TODO: Save to DB & Show result in screen (new Component or reuse old one ?)
+          let resultCheck = DB.execute('SELECT * FROM matches WHERE tournament_id = ?', [store.currentTournament.id]);
+          if (
+            resultCheck.rows === undefined ||
+            resultCheck.rows?.length > 0 ||
+            matchesByRounds == null
+          ) {
+            console.log(
+              'Cannot insert new matches pairing when there exists one in the DB',
+            );
+            return;
+          }
+          if (matchesByRounds == null) {
+            return;
+          }
+          for (let _round = 0; _round < matchesByRounds.length; _round++) {
+            for (
+              let _match = 0;
+              _match < matchesByRounds[_round].length;
+              _match++
+            ) {
+              let match = matchesByRounds[_round][_match];
+              DB.execute(
+                'INSERT INTO matches (tournament_id, team_home_id, team_away_id, scheduled_datetime) VALUES (?, ?, ?, ?);',
+                [
+                  store.currentTournament.id,
+                  match.teamHomeId,
+                  match.teamAwayId,
+                  match.date.toISOString(),
+                ],
+              );
+            }
+          }
+
+          console.log('displaying matches pairing saved to db : ');
+          let results = DB.execute('SELECT * FROM matches;');
+          results.rows?._array.forEach(row => console.log(row));
+        }}
+      />
+      <Button
+        title="Upcoming Matches"
+        onPress={_ => {
+          navigation.navigate('up-coming-matches');
         }}
       />
       <View>
@@ -384,7 +463,7 @@ function ScheduleMatchScreen({ navigation }): React.JSX.Element {
   );
 }
 
-function MakeTeamsPairing(teamsId: any[]) {
+function MakeTeamsPairing(teamsId: any[]): [[], boolean] {
   let maxTeams = teamsId.length;
   let maxRounds = maxTeams - 1;
   let maxRetry = 3;
@@ -419,7 +498,7 @@ function MakeTeamsPairing(teamsId: any[]) {
   let averageDailyMatches = maxMatchesPerRound / roundLengthInDays;
   // Eliminate error due to low precision rounding
   // (eg. avg = 1/3 = 0.3. However 0.3 = .9, so one match won't be counted because of this)
-  averageDailyMatches += .1;
+  averageDailyMatches += 0.1;
 
   let matchesByRounds: any[] = Array(maxRounds)
     .fill(null)
@@ -430,8 +509,13 @@ function MakeTeamsPairing(teamsId: any[]) {
   let teamAwayId: number;
   let matchesRemainingForTheDay: number;
   let matchDay: number;
+  // FIXME: this date should be sent by the user
+  // HOwever I still have issue with date, but we have to move on, later maybe
+  let startTournamentDate = new Date();
+  let currentRoundTournamentDate = startTournamentDate;
 
   for (let _round = 0; _round < maxRounds; _round++) {
+    currentRoundTournamentDate.setDate(startTournamentDate.getDate() + _round * roundLengthInDays);
     matchesRemainingForTheDay = averageDailyMatches;
     matchDay = 1;
 
@@ -448,17 +532,22 @@ function MakeTeamsPairing(teamsId: any[]) {
       teamsCopy[teamAwayId][_round] = -1;
 
       matchesRemainingForTheDay -= 1;
+
+      // Another implementation is using 'while' rather than 'if'
       if (matchesRemainingForTheDay < 0) {
         matchesRemainingForTheDay += averageDailyMatches;
         matchDay++;
       }
 
       console.log('Pre assignment, matchesbyRound: ', matchesByRounds);
+      let matchDate = new Date(currentRoundTournamentDate);
+      matchDate.setDate(currentRoundTournamentDate.getDate() + matchDay - 1);
 
       matchesByRounds[_round].push({
         teamHomeId: teamHomeId,
         teamAwayId: teamAwayId,
         day: matchDay,
+        date: matchDate,
       });
 
       console.log(`[end for loop] round = ${_round} :: teamId = ${_teamId} :: matchesByRounds = `, matchesByRounds);
@@ -472,7 +561,6 @@ function MakeTeamsPairing(teamsId: any[]) {
   console.log('teams size: ', maxTeams);
   console.log('teamsCopy: ', teamsCopy);
   console.log('====== ======');
-  return;
   //
   //
   //
@@ -492,7 +580,18 @@ function MakeTeamsPairing(teamsId: any[]) {
   }
 
   console.log('pairing completed: ', pairing);
-  return [pairing, isScheduleFilled];
+  // conver match pairing abstract team id to application team id
+
+  for (let _round = 0; _round < matchesByRounds.length; _round++) {
+    for (let _match = 0; _match < matchesByRounds[_round].length; _match++) {
+      let { teamHomeId, teamAwayId } = matchesByRounds[_round][_match];
+      matchesByRounds[_round][_match].teamHomeId = teamsId[teamHomeId];
+      matchesByRounds[_round][_match].teamAwayId = teamsId[teamAwayId];
+    }
+  }
+  console.log('Really final render of matchesbyRound: ', matchesByRounds);
+  return [matchesByRounds, isScheduleFilled];
+  // return [pairing, isScheduleFilled];
 }
 
 function buildSimpleTeamsPairing(teamsCount: number) {
@@ -651,13 +750,15 @@ function databaseMigration(db: OPSQLiteConnection): void {
   db.execute(`
     CREATE TABLE IF NOT EXISTS matches (
       id integer primary key autoincrement,
+      tournament_id int,
       team_home_id int,
       team_away_id int,
       score_team_home int check (score_team_home >= 0),
       score_team_away int check (score_team_away >= 0),
       scheduled_datetime datetime,
       FOREIGN KEY (team_home_id) REFERENCES teams (id),
-      FOREIGN KEY (team_away_id) REFERENCES teams (id)
+      FOREIGN KEY (team_away_id) REFERENCES teams (id),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
     );
   `);
 }
