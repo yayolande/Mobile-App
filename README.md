@@ -1,42 +1,35 @@
-# Mobile App Projects Repository
-Welcome to the class mobile app project repository! This repository is organized into branches, with each branch representing a specific group.
+# Mobile-App
 
-## Groupes
+## Todo App: Ambella Francis Personal Assignment
 
-- [Bus Management](https://github.com/3dcodex-org/Mobile-App/tree/bus_management)
-- [File Management](https://github.com/3dcodex-org/Mobile-App/tree/file_management)
-- [Fitness App](https://github.com/3dcodex-org/Mobile-App/tree/fitness)
-- [Spycam App](https://github.com/3dcodex-org/Mobile-App/tree/spycam)
-- [Tournament App](https://github.com/3dcodex-org/Mobile-App/tree/tournament_app)
+Hello Sir, I put the work of the student **Ambella Francis** in the folder bellow
+[ToDo App Source](./ambella_francis/)
 
-## How to use this repository
-# 1
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/1.PNG?raw=true)
+## Intro
 
-# 2 / step 1
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/2.PNG?raw=true)
+This is the work of **Group 5 (Online Student)** for **Intro Mobile Application Development (SE 3140)** throughout *Fall 23*
 
-# 2 /step 2
-![Image](https://github.com/3dcodex-org/.github/blob/main/profile/private/2f.PNG?raw=true)
+## Presentation
 
-# 3
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/3.PNG?raw=true)
+Here are the talking points expected by the prof :
 
-# 4
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/4.PNG?raw=true)
+- MVC model relationship with the project
+- Presentation of the Android app view
 
-# 5
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/5.PNG?raw=true)
+## Application Overview
 
-# 6
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/6.PNG?raw=true)
+![Actions Overview](./assets/20.flowchart_user_use_case_3.png)
 
-# 7
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/7.PNG?raw=true)
+The project is using **React Native**. The MVP will implement the view above first
 
-# 8
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/8.PNG?raw=true)
 
-#9
-![IMAGE](https://github.com/3dcodex-org/.github/blob/main/profile/private/9.PNG?raw=true)
+## Work Distribution
+
+So here is the role :
+
+- [ ] Godwill ----> Tournament Standing View
+- [ ] Lennon ----> Match Statistics View
+- [ ] Steve    ----> Planned Matches View
+- [ ] Nixon & Philomene ----> Tournament Creation
+- [ ] Tiyo & Segolene      ----> Match scheduling Creation
 
